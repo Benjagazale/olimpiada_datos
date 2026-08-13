@@ -13,6 +13,7 @@ library(PerformanceAnalytics)
 library(corrplot)
 library(ggpubr)
 library(skimr)
+library(janitor)
 ```
 
 ## 🔎 Carga del dataset
@@ -36,8 +37,38 @@ dim(encuesta_df)
 ```{r}
 skim(encuesta_df)
 ```
+#### Tratamiento nombres columnas:
+
+💡 ¿Qué hice?
+- Cree un diccionario para reemplazar los nombres de las columnas. 
+- Dejé todo en minúscula y sin tildes.
+- Se separaba el nombre de la empresa con un guión bajo, así que lo reemplace por el nombre de la empresa. 
+‼️ *¿Qué falta?* 
+- Renombrar las columnas extensas.
+ -> Por ejemplo, que comiencen con el área a la que corresponde; comercial, logística, técnia o digital.
+- Análizar si conviene convertir columnas a factor. 
+
 
 ```{r}
+# Creamos un diccionario con el nombre original y un ID de columna
+diccionario_preguntas <- tibble(
+  id = paste0("col_", 1:ncol(encuesta_df)),
+  pregunta_original = names(encuesta_df)
+)
+
+# Diccionario para saberexactamente qué mide cada columna
+View(diccionario_preguntas)
+
+```
+
+```{r}
+
+# Convierte caracteres especiales y minúsculas
+df_clean <- encuesta_df %>% clean_names() %>% 
+  rename_with(~ str_replace_all(., "scaff_co", "scaffco"))
+
+# Cómo quedaron los nombres limpios:
+names(df_clean)[1:5]
 ```
 
 ```{r}
@@ -49,10 +80,15 @@ skim(encuesta_df)
 ```{r}
 ```
 
-```{r}
-```
+
+
+
+### Datos Faltantes
 
 ```{r}
+# Reporte detallado por variable (% de nulos y recuento)
+diagnose(encuesta_df) %>% 
+  select(variables, types, missing_count, missing_percent)
 ```
 
 ```{r}
