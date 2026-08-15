@@ -39,6 +39,60 @@ dim(encuesta_df)
 skim(encuesta_df)
 ```
 ```{r}
+#Equivalencias 46 preguntas sin corchete
+equivalencias <- tribble(
+  ~nombre_original, ~concepto,
+  "ID de respuesta", "id_respuesta",
+  "Medición", "medicion",
+  "Estado de respuesta", "estado_respuesta",
+  "¿Cuál es su rol dentro del proyecto? (seleccione el más cercano).", "rol_proyecto",
+  "¿Cuál es su rol dentro del proyecto? (Seleccione el que más se aproxime)", "rol_proyecto",
+  "¿Qué tan probable es que recomiende los productos y servicios de ScaffCo a un colega o amigo?", "recomendacion",
+  "¿Cuál es la principal razón para la nota anterior?", "razon_recomendacion",
+  "Claridad de la información de los Estados de Pago.", "claridad_estados_pago",
+  "Evalúe la claridad de la información de los Estados de Pago.", "claridad_estados_pago",
+  "¿Conoce WebScaff? El servicio de Información en línea de su obra de arriendo ScaffCo.", "conoce_webscaff",
+  "¿Conoce WebScaff? (El servicio de información en línea de su obra de arriendo ScaffCo)", "conoce_webscaff",
+  "¿Ha usado WebScaff?", "uso_webscaff",
+  "Evalúe su satisfacción con WebScaff.", "satisfaccion_webscaff",
+  "Evalúe su satisfacción con WebScaff", "satisfaccion_webscaff",
+  "¿Conoce CapScaff? El servicio de Inducción virtual interactiva de armado de andamios ScaffCo.", "conoce_capscaff",
+  "¿Conoce CapScaff? (El servicio de Inducción virtual interactiva de armado de andamios ScaffCo)", "conoce_capscaff",
+  "¿Ha usado CapScaff?", "uso_capscaff",
+  "Evalúe su satisfacción con CapScaff.", "satisfaccion_capscaff",
+  "Evalúe su satisfacción con CapScaff", "satisfaccion_capscaff",
+  "De los siguientes atributos de ScaffCo, elija los 3 más importantes para Ud.", "atributos_importantes",
+  "¿Qué tan fácil fue resolver sus solicitudes o problemas con ScaffCo?", "facilidad_resolucion",
+  "Indique 3 palabras con las que identifica a la marca ScaffCo.", "palabras_marca",
+  "Indique 3 palabras con las que identifica a la marca ScaffCo", "palabras_marca",
+  "Considerando el precio, servicio y productos que recibe de ScaffCo ¿Qué nota le pondría usted a ScaffCo en cuanto a esta relación precio-calidad?", "precio_calidad",
+  "¿Tiene algún comentario o sugerencia para nosotros? Indique cualquier punto que pudiera no estar cubierto en esta encuesta, recuerde que los mismos son anónimos.", "comentario_sugerencia",
+  "¿Tiene algún comentario o sugerencia para nosotros? Indique cualquier punto que pudiera no estar cubierto en esta encuesta, recuerde que los mismos son anónimos", "comentario_sugerencia",
+  "¿Le gustaría recibir el newsletter de ScaffCo?", "newsletter",
+  "Periodo", "periodo",
+  "¿En cuál de estos sectores presta servicios tu empresa?(Puedes seleccionar más de una opción si corresponde)", "sector_empresa",
+  "¿En cuál de estos sectores presta servicios su empresa?(Puede seleccionar más de una opción si corresponde)", "sector_empresa",
+  "¿En qué región del país se encontraba el proyecto para el cual su empresa contrató productos o servicios de ScaffCo?(Si ha trabajado en más de una región, por favor indique la principal)", "region_proyecto",
+  "Seleccione cuando fue su última interacción con el equipo ScaffCo (Entiéndase por interacción cualquier tipo de comunicación ya sea escrita, telefónica o presencial, o cotización, servicios prestados, o cualquier otro tipo de contacto con la empresa)", "ultima_interaccion",
+  "Considerando todos los aspectos antes mencionados, ¿Cuál diría usted que es su nivel de satisfacción con los servicios logísticos en general?", "satisfaccion_logistica_general",
+  "Considerando todos los aspectos recién mencionados, ¿Cuál diría usted que es su nivel de satisfacción con los servicios de Asesoría Técnica en general?", "satisfaccion_asesoria_general",
+  "¿Nos puede comentar por qué no ha usado WebScaff?(Marque todas las que correspondan)", "motivo_no_uso_webscaff",
+  "¿Qué le gustaría agregar o mejorar en WebScaff?", "mejora_webscaff",
+  "¿Nos puede comentar por qué no ha usado CapScaff?(Marque todas las que correspondan)", "motivo_no_uso_capscaff",
+  "¿Conoce ScanScaff? (El servicio de ScaffCo para realizar levantamientos digitales de estructuras mediante nube de puntos)", "conoce_scanscaff",
+  "¿Ha usado ScanScaff?", "uso_scanscaff",
+  "¿Nos puede comentar por qué no ha usado ScanScaff?", "motivo_no_uso_scanscaff",
+  "Evalúe su satisfacción con ScanScaff", "satisfaccion_scanscaff",
+  "¿Conoce XR App? (La aplicación de construcción digital de ScaffCo, basada en realidad aumentada)", "conoce_xr_app",
+  "¿Ha usado XR App?", "uso_xr_app",
+  "Evalúe su satisfacción con XR App", "satisfaccion_xr_app",
+  "¿Nos puede comentar por qué no ha usado XR App?(Marque todas las que correspondan)", "motivo_no_uso_xr_app",
+  "¿Quiere ser contactado para profundizar en sus respuestas?", "quiere_contacto"
+)
+```
+
+
+```{r}
 
 diccionario_nombres <- tibble(nombre_original = names(encuesta_df)) %>%
   mutate(
@@ -102,51 +156,15 @@ write_csv(diccionario_nombres, "diccionario_variables.csv")
 ```
 
 ```{r}
-resumen <- as_tibble(skim(encuesta_df))
-candidatas <- resumen %>% 
-  filter(skim_type == "character", character.n_unique %in% 6:9) %>%
-  select(skim_variable, n_missing, character.n_unique)
-
-print(candidatas, n = 50)
-```
-
-```{r}
-candidatas_nombres <- candidatas$skim_variable
-
-valores_unicos <- encuesta_df %>%
-  select(all_of(candidatas_nombres)) %>%
-  map(~ unique(.x)) 
-
-# Vemos los valores de las primeras 5, para partir
-valores_unicos[1:5]
-```
-
-```{r}
-todos_los_valores <- encuesta_df %>%
-  select(all_of(candidatas_nombres)) %>%
-  unlist() %>%
-  unique()
-
-todos_los_valores
-```
-
-```{r}
+# Detectar TODAS las columnas de escala 1-7, sin depender de n_unique
 es_escala_1_a_7 <- function(x) {
+  if (!is.character(x)) return(FALSE)
   valores <- unique(na.omit(x))
-  all(valores %in% c("1","2","3","4","5","6","7","N/A"))
+  length(valores) > 0 && all(valores %in% c("1","2","3","4","5","6","7","N/A"))
 }
 
-diagnostico_escalas <- encuesta_df %>%
-  select(all_of(candidatas_nombres)) %>%
-  map_lgl(es_escala_1_a_7)
-
-# Nombres que SÍ son escalas 1-7 verdaderas
-columnas_escala <- names(diagnostico_escalas[diagnostico_escalas])
+columnas_escala <- names(encuesta_df)[sapply(encuesta_df, es_escala_1_a_7)]
 length(columnas_escala)
-
-# Nombres que se colaron pero NO son escala (para revisar aparte)
-columnas_no_escala <- names(diagnostico_escalas[!diagnostico_escalas])
-columnas_no_escala
 ```
 
 ```{r}
@@ -257,16 +275,54 @@ print(diccionario_nombres, n = Inf, width = Inf)
 ```
 
 ```{r}
+conceptos_multiples <- diccionario_nombres %>%
+  count(concepto_final) %>%
+  filter(n > 1) %>%
+  pull(concepto_final)
 
+length(conceptos_multiples)
 ```
 
 ```{r}
+for (concepto_actual in conceptos_multiples) {
+  columnas_variante <- diccionario_nombres %>%
+    filter(concepto_final == concepto_actual) %>%
+    pull(nombre_limpio)
+  
+  tipos <- sapply(encuesta_df[columnas_variante], class)
+  
+  if (length(unique(tipos)) > 1) {
+    cat("⚠️ CONFLICTO en concepto:", concepto_actual, "\n")
+    print(columnas_variante)
+    print(tipos)
+    cat("\n")
+  }
+}
 ```
 
 ```{r}
+for (concepto_actual in conceptos_multiples) {
+  columnas_variante <- diccionario_nombres %>%
+    filter(concepto_final == concepto_actual) %>%
+    pull(nombre_limpio)
+  
+  encuesta_df[[concepto_actual]] <- do.call(coalesce, encuesta_df[columnas_variante])
+}
+
+# Verificación: rol_proyecto debería quedar con 0% de missing
+encuesta_df %>% summarise(missing_rol = mean(is.na(rol_proyecto)))
 ```
 
 ```{r}
+encuesta_df_sector_largo <- encuesta_df %>%
+  filter(!is.na(sector_empresa)) %>%
+  separate_rows(sector_empresa, sep = ",")
+
+encuesta_df_atributos_largo <- encuesta_df %>%
+  filter(!is.na(atributos_importantes)) %>%
+  separate_rows(atributos_importantes, sep = ",")
+
+encuesta_df_atributos_largo %>% count(atributos_importantes, sort = TRUE)
 ```
 
 ```{r}
