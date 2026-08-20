@@ -1,4 +1,8 @@
-# Análisis Exploratorio de Datos (EDA)
+# Análisis Exploratorio de Datos Inicial (EDA)
+
+🏢 Olimpiada de Minería de Datos UNAB
+Caso de estudio: Identificación de patrones en la satisfacción de clientes B2B mediante minería de datos
+
 
 ```{r}
 #Cargamos las librerías
@@ -18,9 +22,11 @@ library(stringr)
 ```
 
 ## 🔎 Carga del dataset
+💡 Trabajaremos con encuesta_df, y dejaremos encuesta_raw intacto como respaldo.
 ```{r}
 #Importamos el csv
-encuesta_df <-read_csv("Encuesta_Satisfaccion_ANONIMIZADA_final.csv", show_col_types = FALSE)
+encuesta_raw <-read_csv("Encuesta_Satisfaccion_ANONIMIZADA_final.csv", show_col_types = FALSE)
+encuesta_df <- encuesta_raw
 
 ```
 
@@ -39,64 +45,97 @@ dim(encuesta_df)
 skim(encuesta_df)
 ```
 
+### Limpieza inicial:
+
+#### 💡 Homologación de ítems y creación diccionario de variables. El propósito es mapear preguntas que variaron en su redacción entre olas a un identificador único estándar. (no considera preguntas con corchetes)
+
 ```{r}
-#Equivalencias 46 preguntas sin corchete
+
 equivalencias <- tribble(
   ~nombre_original, ~concepto,
   "ID de respuesta", "id_respuesta",
   "Medición", "medicion",
   "Estado de respuesta", "estado_respuesta",
+  "Periodo", "periodo",
+  
+  #Variables Demográficas / Contexto
+  
   "¿Cuál es su rol dentro del proyecto? (seleccione el más cercano).", "rol_proyecto",
   "¿Cuál es su rol dentro del proyecto? (Seleccione el que más se aproxime)", "rol_proyecto",
+  "¿En cuál de estos sectores presta servicios tu empresa?(Puedes seleccionar más de una opción si corresponde)", "sector_empresa",
+  "¿En cuál de estos sectores presta servicios su empresa?(Puede seleccionar más de una opción si corresponde)", "sector_empresa",
+  "¿En qué región del país se encontraba el proyecto para el cual su empresa contrató productos o servicios de ScaffCo?(Si ha trabajado en más de una región, por favor indique la principal)", "region_proyecto",
+  "Seleccione cuando fue su última interacción con el equipo ScaffCo (Entiéndase por interacción cualquier tipo de comunicación ya sea escrita, telefónica o presencial, o cotización, servicios prestados, o cualquier otro tipo de contacto con la empresa)", "ultima_interaccion",
+  
+  # Métricas Globales de Percepción / Satisfacción
+  
   "¿Qué tan probable es que recomiende los productos y servicios de ScaffCo a un colega o amigo?", "recomendacion",
   "¿Cuál es la principal razón para la nota anterior?", "razon_recomendacion",
+  "¿Qué tan fácil fue resolver sus solicitudes o problemas con ScaffCo?", "facilidad_resolucion",
+  "Considerando el precio, servicio y productos que recibe de ScaffCo ¿Qué nota le pondría usted a ScaffCo en cuanto a esta relación precio-calidad?", "precio_calidad",
+  "Considerando todos los aspectos antes mencionados, ¿Cuál diría usted que es su nivel de satisfacción con los servicios logísticos en general?", "satisfaccion_logistica_general",
+  "Considerando todos los aspectos recién mencionados, ¿Cuál diría usted que es su nivel de satisfacción con los servicios de Asesoría Técnica en general?", "satisfaccion_asesoria_tecnica_general",
+  
+  # Servicios Comerciales y Facturación
+  
   "Claridad de la información de los Estados de Pago.", "claridad_estados_pago",
   "Evalúe la claridad de la información de los Estados de Pago.", "claridad_estados_pago",
+  
+  # Plataforma WebScaff
+  
   "¿Conoce WebScaff? El servicio de Información en línea de su obra de arriendo ScaffCo.", "conoce_webscaff",
   "¿Conoce WebScaff? (El servicio de información en línea de su obra de arriendo ScaffCo)", "conoce_webscaff",
   "¿Ha usado WebScaff?", "uso_webscaff",
   "Evalúe su satisfacción con WebScaff.", "satisfaccion_webscaff",
   "Evalúe su satisfacción con WebScaff", "satisfaccion_webscaff",
+  "¿Nos puede comentar por qué no ha usado WebScaff?(Marque todas las que correspondan)", "motivo_no_uso_webscaff",
+  "¿Qué le gustaría agregar o mejorar en WebScaff?", "mejora_webscaff",
+  
+  # Plataforma CapScaff
+  
   "¿Conoce CapScaff? El servicio de Inducción virtual interactiva de armado de andamios ScaffCo.", "conoce_capscaff",
   "¿Conoce CapScaff? (El servicio de Inducción virtual interactiva de armado de andamios ScaffCo)", "conoce_capscaff",
   "¿Ha usado CapScaff?", "uso_capscaff",
   "Evalúe su satisfacción con CapScaff.", "satisfaccion_capscaff",
   "Evalúe su satisfacción con CapScaff", "satisfaccion_capscaff",
-  "De los siguientes atributos de ScaffCo, elija los 3 más importantes para Ud.", "atributos_importantes",
-  "¿Qué tan fácil fue resolver sus solicitudes o problemas con ScaffCo?", "facilidad_resolucion",
-  "Indique 3 palabras con las que identifica a la marca ScaffCo.", "palabras_marca",
-  "Indique 3 palabras con las que identifica a la marca ScaffCo", "palabras_marca",
-  "Considerando el precio, servicio y productos que recibe de ScaffCo ¿Qué nota le pondría usted a ScaffCo en cuanto a esta relación precio-calidad?", "precio_calidad",
-  "¿Tiene algún comentario o sugerencia para nosotros? Indique cualquier punto que pudiera no estar cubierto en esta encuesta, recuerde que los mismos son anónimos.", "comentario_sugerencia",
-  "¿Tiene algún comentario o sugerencia para nosotros? Indique cualquier punto que pudiera no estar cubierto en esta encuesta, recuerde que los mismos son anónimos", "comentario_sugerencia",
-  "¿Le gustaría recibir el newsletter de ScaffCo?", "newsletter",
-  "Periodo", "periodo",
-  "¿En cuál de estos sectores presta servicios tu empresa?(Puedes seleccionar más de una opción si corresponde)", "sector_empresa",
-  "¿En cuál de estos sectores presta servicios su empresa?(Puede seleccionar más de una opción si corresponde)", "sector_empresa",
-  "¿En qué región del país se encontraba el proyecto para el cual su empresa contrató productos o servicios de ScaffCo?(Si ha trabajado en más de una región, por favor indique la principal)", "region_proyecto",
-  "Seleccione cuando fue su última interacción con el equipo ScaffCo (Entiéndase por interacción cualquier tipo de comunicación ya sea escrita, telefónica o presencial, o cotización, servicios prestados, o cualquier otro tipo de contacto con la empresa)", "ultima_interaccion",
-  "Considerando todos los aspectos antes mencionados, ¿Cuál diría usted que es su nivel de satisfacción con los servicios logísticos en general?", "satisfaccion_logistica_general",
-  "Considerando todos los aspectos recién mencionados, ¿Cuál diría usted que es su nivel de satisfacción con los servicios de Asesoría Técnica en general?", "satisfaccion_asesoria_general",
-  "¿Nos puede comentar por qué no ha usado WebScaff?(Marque todas las que correspondan)", "motivo_no_uso_webscaff",
-  "¿Qué le gustaría agregar o mejorar en WebScaff?", "mejora_webscaff",
   "¿Nos puede comentar por qué no ha usado CapScaff?(Marque todas las que correspondan)", "motivo_no_uso_capscaff",
+  
+  # Plataforma ScanScaff
+  
   "¿Conoce ScanScaff? (El servicio de ScaffCo para realizar levantamientos digitales de estructuras mediante nube de puntos)", "conoce_scanscaff",
   "¿Ha usado ScanScaff?", "uso_scanscaff",
   "¿Nos puede comentar por qué no ha usado ScanScaff?", "motivo_no_uso_scanscaff",
   "Evalúe su satisfacción con ScanScaff", "satisfaccion_scanscaff",
+  
+  # Plataforma XR App
+  
   "¿Conoce XR App? (La aplicación de construcción digital de ScaffCo, basada en realidad aumentada)", "conoce_xr_app",
   "¿Ha usado XR App?", "uso_xr_app",
   "Evalúe su satisfacción con XR App", "satisfaccion_xr_app",
   "¿Nos puede comentar por qué no ha usado XR App?(Marque todas las que correspondan)", "motivo_no_uso_xr_app",
+  
+  # Atributos de Marca y Cierre
+  
+  "De los siguientes atributos de ScaffCo, elija los 3 más importantes para Ud.", "atributos_importantes",
+  "Indique 3 palabras con las que identifica a la marca ScaffCo.", "palabras_marca",
+  "Indique 3 palabras con las que identifica a la marca ScaffCo", "palabras_marca",
+  "¿Tiene algún comentario o sugerencia para nosotros? Indique cualquier punto que pudiera no estar cubierto en esta encuesta, recuerde que los mismos son anónimos.", "comentario_sugerencia",
+  "¿Tiene algún comentario o sugerencia para nosotros? Indique cualquier punto que pudiera no estar cubierto en esta encuesta, recuerde que los mismos son anónimos", "comentario_sugerencia",
+  "¿Le gustaría recibir el newsletter de ScaffCo?", "newsletter",
   "¿Quiere ser contactado para profundizar en sus respuestas?", "quiere_contacto"
 )
 ```
 
 
+#### 💡 Procesamiento preguntas restantes
+
+Se construye un diccionario automatizado para homologar preguntas manuales y limpiar atributos matriciales con corchetes a formato snake_case único.
+
 ```{r}
 
 diccionario_nombres <- tibble(nombre_original = names(encuesta_df)) %>%
   mutate(
+    #Detectar preguntas tipo matriz con ítems entre conchetes
     tiene_corchete = str_detect(nombre_original, "\\[.+\\]"),
     atributo_extraido = str_extract(nombre_original, "(?<=\\[).+(?=\\])")
   ) %>%
@@ -108,6 +147,7 @@ diccionario_nombres <- tibble(nombre_original = names(encuesta_df)) %>%
 #  Limpiamos los atributos de corchete uno por uno
 diccionario_nombres <- diccionario_nombres %>%
   mutate(
+    #Para ítems con corchetes, estandarizamos el texto a snake_case
     concepto_bracket = if_else(
       tiene_corchete,
       map_chr(atributo_extraido, make_clean_names),
@@ -132,8 +172,9 @@ diccionario_nombres %>% summarise(
 
 ```
 
+
 ```{r}
-# Aplicar al dataset
+# Aplicar al dataset y renombrado del dataset original.
 names(encuesta_df) <- diccionario_nombres$nombre_limpio
 names(encuesta_df)
 
@@ -143,9 +184,10 @@ names(encuesta_df)
 # Guardar el diccionario para sección 4.2
 write_csv(diccionario_nombres, "diccionario_variables.csv")
 
-```
+```  
 
 ```{r}
+#Completitud de datos. Calculamos la proporción de datos faltantes por columna
 missing_por_variable <- encuesta_df %>%
   summarise(across(everything(), ~ round(mean(is.na(.)) * 100, 1))) %>%
   pivot_longer(everything(), names_to = "nombre_limpio", values_to = "pct_missing")
@@ -156,14 +198,18 @@ diccionario_nombres <- diccionario_nombres %>%
 write_csv(diccionario_nombres, "diccionario_variables.csv")
 ```
 
+#### Conversión variables tipo escala y Tratamiendo Datos Faltantes
+
+
 ```{r}
-# Detectar TODAS las columnas de escala 1-7, sin depender de n_unique
+# Detectar TODAS las columnas de escala 1-7
 es_escala_1_a_7 <- function(x) {
   if (!is.character(x)) return(FALSE)
   valores <- unique(na.omit(x))
   length(valores) > 0 && all(valores %in% c("1","2","3","4","5","6","7","N/A"))
 }
 
+#Vector con los nombres limpios de todas las escalas de evaluación
 columnas_escala <- names(encuesta_df)[sapply(encuesta_df, es_escala_1_a_7)]
 length(columnas_escala)
 ```
@@ -174,6 +220,7 @@ encuesta_df <- encuesta_df %>%
   mutate(across(
     all_of(columnas_escala),
     ~ na_if(.x, "N/A") %>% as.numeric()
+    
   ))
 ```
 
@@ -181,6 +228,8 @@ encuesta_df <- encuesta_df %>%
 resumen_final <- as_tibble(skim(encuesta_df))
 resumen_final %>% count(skim_type)
 ```
+
+⬇️ Verificamos que no existan valores fuera de la escala 1 a 7
 
 ```{r}
 #Evaluar los rangos, entre 1 y 7 estan OK
@@ -201,27 +250,22 @@ encuesta_df %>%
 ```
 
 ```{r}
-#Visualizar patrón de valores faltantes
-encuesta_df %>%
-  select(all_of(columnas_escala)) %>%
-  vis_miss(warn_large_data = FALSE)
+#Diagnóstico General
+diagnose(encuesta_df) %>%
+  flextable() %>%
+  autofit()
 ```
 
-```{r}
-encuesta_df %>% select(all_of(columnas_escala)) %>% vis_dat(warn_large_data = FALSE)
-```
+#### Detección de duplicados
 
 ```{r}
-diagnose(encuesta_df) %>% flextable()
-```
-
-```{r}
-# Evaluar si las filas con el mismo id_respuesta son la misma persona respondiendo dos veces o son personas distinas a las que se les asigno el mismo id por error?
+# Evaluar si las filas con el mismo id_respuesta son la misma persona respondiendo dos veces o son personas distinas a las que se les asigno el mismo id por error
 ids_duplicados <- encuesta_df %>%
   count(id_respuesta, medicion) %>%
   filter(n > 1) %>%
   pull(id_respuesta)
 
+#Visualización
 encuesta_df %>%
   filter(id_respuesta %in% ids_duplicados[1:3]) %>%
   select(id_respuesta, medicion, estado_respuesta, periodo, recomendacion) %>%
@@ -240,6 +284,8 @@ duplicados_exactos <- encuesta_df %>%
 duplicados_exactos %>% 
   count(fila_identica_a_otra)
 ```
+👀 Como sólo encontramos valores `FALSE` podemos decir que, aunque el `id_respuesta` este repetido, sus datos internos cambian entre una fila y otra. Esto quiere decir que un mismo usuario respondió varias veces pero con respuestas distintas. 
+
 
 ```{r}
 #Decisión de limpieza
@@ -249,16 +295,19 @@ encuesta_df <- encuesta_df %>%
 # Verificación: ahora sí debe ser 100% único
 n_distinct(encuesta_df$id_fila) == nrow(encuesta_df)
 ```
+👀⬆️ Con `True` confirmamos que cada fila de dataset es única respecto a su posisición.
 
 ```{r}
-#Respuestas parciales
+#Respuestas parciales de la encuesta
 encuesta_df %>%
   filter(estado_respuesta == "PARTIAL") %>%
   summarise(across(everything(), ~mean(!is.na(.x)))) %>%
   pivot_longer(everything(), names_to = "variable", values_to = "pct_completo") %>%
   summarise(pct_completo_promedio = mean(pct_completo))
-#Esto da, en promedio, qué porcentaje de todas las columnas alcanzó a responder una fila PARTIAL típica. Con ese número decidimos con criterio: si completan poquísimo (ej. <15%), lo más sano es excluirlas del análisis cuantitativo (aunque se puede mantener el n=427 mencionado, aclarando cuántas quedan útiles). Si completan una porción razonable, se pueden mantener y dejar que cada análisis use listwise/pairwise deletion según corresponda.
 ```
+⬆️ 
+👀 Obs 1: Esto da, en promedio, qué porcentaje de todas las columnas alcanzó a responder una fila PARTIAL típica. Con ese número decidimos con criterio: si completan poquísimo (ej. <15%), lo más sano es excluirlas del análisis cuantitativo (aunque se puede mantener el n=427 mencionado, aclarando cuántas quedan útiles). Si completan una porción razonable, se pueden mantener y dejar que cada análisis use listwise/pairwise deletion según corresponda.
+
 
 ```{r}
 #Considerando como variable objetivo RECOMENDACION, revisar si en filas PARTIAL contestaron esto y abandonaron el resto
@@ -270,12 +319,15 @@ encuesta_df %>%
     pct_con_recomendacion = mean(!is.na(recomendacion))
   )
 ```
+ ⬆️Entonces, un 76% de registros parciales alcanzaron a rellenar la recomendación antes de abandonar la encuesta. Esto responde a la pregunta: **_¿Los usuarios abandonan la encuesta antes de llegar al final, o alcanzan a responder las preguntas clave (como la recomendación)?_**
+ 
 
 ```{r}
 print(diccionario_nombres, n = Inf, width = Inf)
 ```
-
+⚠️⚠️⚠️⚠️ Acá quede!
 ```{r}
+#Control de calidad sobre la estandarización de variables. 
 conceptos_multiples <- diccionario_nombres %>%
   count(concepto_final) %>%
   filter(n > 1) %>%
@@ -283,8 +335,12 @@ conceptos_multiples <- diccionario_nombres %>%
 
 length(conceptos_multiples)
 ```
+‼️ Error de mapeo? 
+_Si el resultado de length(conceptos_multiples) es mayor a 0, te advierte inmediatamente que cometiste un error de mapeo y hay conceptos repetidos, lo que te obliga a revisar la tabla de equivalencias antes de unificar o modelar los datos._
+
 
 ```{r}
+#Bucle de validación cruzada de tipos de datos
 for (concepto_actual in conceptos_multiples) {
   columnas_variante <- diccionario_nombres %>%
     filter(concepto_final == concepto_actual) %>%
@@ -300,6 +356,7 @@ for (concepto_actual in conceptos_multiples) {
   }
 }
 ```
+⬆️ 
 
 ```{r}
 for (concepto_actual in conceptos_multiples) {
