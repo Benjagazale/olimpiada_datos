@@ -40,7 +40,6 @@ dim(encuesta_df)
 
 💡 Use skim porque son demasiadas variables para mostrarlas con un str o un summay. Además, los nombres de cada columna son preguntas. Sería bueno limpiar los nombre largos y pasarlos a un tipo "nombre_variable". 
 
-
 ```{r}
 skim(encuesta_df)
 ```
@@ -125,7 +124,6 @@ equivalencias <- tribble(
   "¿Quiere ser contactado para profundizar en sus respuestas?", "quiere_contacto"
 )
 ```
-
 
 #### 💡 Procesamiento preguntas restantes
 
@@ -296,6 +294,16 @@ encuesta_df <- encuesta_df %>%
 n_distinct(encuesta_df$id_fila) == nrow(encuesta_df)
 ```
 👀⬆️ Con `True` confirmamos que cada fila de dataset es única respecto a su posisición.
+
+#### Estado de respuestas: COMPLETED — PARTIAL
+
+```{r}
+# Revisar la distribución de registros por Medición y Estado de Respuesta
+distribucion_medicion_estado <- encuesta_df %>%
+  count(medicion, estado_respuesta)
+
+print(distribucion_medicion_estado)
+```
 
 ```{r}
 #Respuestas parciales de la encuesta
