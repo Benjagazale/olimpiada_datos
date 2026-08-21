@@ -415,10 +415,18 @@ encuesta_df_atributos_largo <- encuesta_df %>%
 encuesta_df_atributos_largo %>% count(atributos_importantes, sort = TRUE)
 ```
 
+#### Variables numéricas homologadas
+
 ```{r}
 ```
 
+Roles disponibles
+
+💡💡💡💡 ¿Quienes son los que contestaron la encuesta?
+
 ```{r}
+encuesta_df %>%
+  count(rol_proyecto)
 ```
 
 ```{r}
