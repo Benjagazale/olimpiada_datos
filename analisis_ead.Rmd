@@ -1,8 +1,6 @@
 # Análisis Exploratorio de Datos Inicial (EDA)
 
-🏢 Olimpiada de Minería de Datos UNAB
-Caso de estudio: Identificación de patrones en la satisfacción de clientes B2B mediante minería de datos
-
+🏢 Olimpiada de Minería de Datos UNAB Caso de estudio: Identificación de patrones en la satisfacción de clientes B2B mediante minería de datos
 
 ```{r}
 #Cargamos las librerías
@@ -22,7 +20,9 @@ library(stringr)
 ```
 
 ## 🔎 Carga del dataset
+
 💡 Trabajaremos con encuesta_df, y dejaremos encuesta_raw intacto como respaldo.
+
 ```{r}
 #Importamos el csv
 encuesta_raw <-read_csv("Encuesta_Satisfaccion_ANONIMIZADA_final.csv", show_col_types = FALSE)
@@ -31,14 +31,16 @@ encuesta_df <- encuesta_raw
 ```
 
 ## 🔎 Inspección inicial de la estructura
+
 ### Dimensión
 
 ```{r}
 dim(encuesta_df)
 ```
+
 ### Estructura y tipos de datos por columna
 
-💡 Use skim porque son demasiadas variables para mostrarlas con un str o un summay. Además, los nombres de cada columna son preguntas. Sería bueno limpiar los nombre largos y pasarlos a un tipo "nombre_variable". 
+💡 Use skim porque son demasiadas variables para mostrarlas con un str o un summay. Además, los nombres de cada columna son preguntas. Sería bueno limpiar los nombre largos y pasarlos a un tipo "nombre_variable".
 
 ```{r}
 skim(encuesta_df)
@@ -140,7 +142,6 @@ diccionario_nombres <- tibble(nombre_original = names(encuesta_df)) %>%
   left_join(equivalencias, by = "nombre_original")
 ```
 
-
 ```{r}
 #  Limpiamos los atributos de corchete uno por uno
 diccionario_nombres <- diccionario_nombres %>%
@@ -170,7 +171,6 @@ diccionario_nombres %>% summarise(
 
 ```
 
-
 ```{r}
 # Aplicar al dataset y renombrado del dataset original.
 names(encuesta_df) <- diccionario_nombres$nombre_limpio
@@ -182,7 +182,7 @@ names(encuesta_df)
 # Guardar el diccionario para sección 4.2
 write_csv(diccionario_nombres, "diccionario_variables.csv")
 
-```  
+```
 
 ```{r}
 #Completitud de datos. Calculamos la proporción de datos faltantes por columna
@@ -197,7 +197,6 @@ write_csv(diccionario_nombres, "diccionario_variables.csv")
 ```
 
 #### Conversión variables tipo escala y Tratamiendo Datos Faltantes
-
 
 ```{r}
 # Detectar TODAS las columnas de escala 1-7
@@ -267,7 +266,30 @@ ids_duplicados <- encuesta_df %>%
 encuesta_df %>%
   filter(id_respuesta %in% ids_duplicados[1:3]) %>%
   select(id_respuesta, medicion, estado_respuesta, periodo, recomendacion) %>%
-  arrange(id_respuesta)
+  arrange(id_respuesta) 
+```
+
+```{r}
+#Visualización resumida
+resumen <- encuesta_df %>%
+  filter(id_respuesta %in% ids_duplicados[]) %>%
+  filter(medicion == "Medición 2") %>%
+  group_by(medicion, estado_respuesta) %>%
+  summarise(cantidad = n(), .groups = "drop")
+
+print(resumen)
+```
+
+```{r}
+#Visualización resumida. Agregamos recomendación para visualizar la cantidad según puntaje.
+resumen <- encuesta_df %>%
+  filter(id_respuesta %in% ids_duplicados[]) %>%
+  filter(medicion == "Medición 2") %>%
+  group_by(medicion, estado_respuesta, recomendacion) %>%
+  summarise(cantidad = n(), .groups = "drop")
+
+print(resumen)
+
 ```
 
 ```{r}
@@ -282,8 +304,8 @@ duplicados_exactos <- encuesta_df %>%
 duplicados_exactos %>% 
   count(fila_identica_a_otra)
 ```
-👀 Como sólo encontramos valores `FALSE` podemos decir que, aunque el `id_respuesta` este repetido, sus datos internos cambian entre una fila y otra. Esto quiere decir que un mismo usuario respondió varias veces pero con respuestas distintas. 
 
+👀 Como sólo encontramos valores `FALSE` podemos decir que, aunque el `id_respuesta` este repetido, sus datos internos cambian entre una fila y otra. Esto quiere decir que se les asignó el mismo ID por error.
 
 ```{r}
 #Decisión de limpieza
@@ -293,7 +315,8 @@ encuesta_df <- encuesta_df %>%
 # Verificación: ahora sí debe ser 100% único
 n_distinct(encuesta_df$id_fila) == nrow(encuesta_df)
 ```
-👀⬆️ Con `True` confirmamos que cada fila de dataset es única respecto a su posisición.
+
+👀⬆️ Con `True` confirmamos que cada fila de dataset es única respecto a su posisición. Por ello, se genera una clave artificial única para manterner la trazabilidad de cada fila.
 
 #### Estado de respuestas: COMPLETED — PARTIAL
 
@@ -313,9 +336,8 @@ encuesta_df %>%
   pivot_longer(everything(), names_to = "variable", values_to = "pct_completo") %>%
   summarise(pct_completo_promedio = mean(pct_completo))
 ```
-⬆️ 
-👀 Obs 1: Esto da, en promedio, qué porcentaje de todas las columnas alcanzó a responder una fila PARTIAL típica. Con ese número decidimos con criterio: si completan poquísimo (ej. <15%), lo más sano es excluirlas del análisis cuantitativo (aunque se puede mantener el n=427 mencionado, aclarando cuántas quedan útiles). Si completan una porción razonable, se pueden mantener y dejar que cada análisis use listwise/pairwise deletion según corresponda.
 
+⬆️ 👀 Obs 1: Esto da, en promedio, qué porcentaje de todas las columnas alcanzó a responder una fila PARTIAL típica. Con ese número decidimos con criterio: si completan poquísimo (ej. \<15%), lo más sano es excluirlas del análisis cuantitativo (aunque se puede mantener el n=427 mencionado, aclarando cuántas quedan útiles). Si completan una porción razonable, se pueden mantener y dejar que cada análisis use listwise/pairwise deletion según corresponda.
 
 ```{r}
 #Considerando como variable objetivo RECOMENDACION, revisar si en filas PARTIAL contestaron esto y abandonaron el resto
@@ -327,13 +349,15 @@ encuesta_df %>%
     pct_con_recomendacion = mean(!is.na(recomendacion))
   )
 ```
- ⬆️Entonces, un 76% de registros parciales alcanzaron a rellenar la recomendación antes de abandonar la encuesta. Esto responde a la pregunta: **_¿Los usuarios abandonan la encuesta antes de llegar al final, o alcanzan a responder las preguntas clave (como la recomendación)?_**
- 
+
+⬆️Entonces, un 76% de registros parciales alcanzaron a rellenar la recomendación antes de abandonar la encuesta. Esto responde a la pregunta: ***¿Los usuarios abandonan la encuesta antes de llegar al final, o alcanzan a responder las preguntas clave (como la recomendación)?***
 
 ```{r}
 print(diccionario_nombres, n = Inf, width = Inf)
 ```
+
 ⚠️⚠️⚠️⚠️ Acá quede!
+
 ```{r}
 #Control de calidad sobre la estandarización de variables. 
 conceptos_multiples <- diccionario_nombres %>%
@@ -343,9 +367,8 @@ conceptos_multiples <- diccionario_nombres %>%
 
 length(conceptos_multiples)
 ```
-‼️ Error de mapeo? 
-_Si el resultado de length(conceptos_multiples) es mayor a 0, te advierte inmediatamente que cometiste un error de mapeo y hay conceptos repetidos, lo que te obliga a revisar la tabla de equivalencias antes de unificar o modelar los datos._
 
+‼️ Error de mapeo? *Si el resultado de length(conceptos_multiples) es mayor a 0, te advierte inmediatamente que cometiste un error de mapeo y hay conceptos repetidos, lo que te obliga a revisar la tabla de equivalencias antes de unificar o modelar los datos.*
 
 ```{r}
 #Bucle de validación cruzada de tipos de datos
@@ -364,7 +387,8 @@ for (concepto_actual in conceptos_multiples) {
   }
 }
 ```
-⬆️ 
+
+⬆️
 
 ```{r}
 for (concepto_actual in conceptos_multiples) {
@@ -411,4 +435,3 @@ encuesta_df_atributos_largo %>% count(atributos_importantes, sort = TRUE)
 
 ```{r}
 ```
-
