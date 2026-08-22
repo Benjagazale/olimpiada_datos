@@ -579,6 +579,94 @@ ggplot(encuesta_df_plot, aes(x = medicion, y = recomendacion, fill = medicion)) 
   )
 ```
 
+💡
+
+## Análisis por Segmento
+
+🔎 Los dos segmentos principales para realizar este cruce son `rol_proyecto` y `sector_empresa`.
+
+### 📊 Cruce Satisfacción por Rol del Proyecto
+
+Calculamos el promedio de las variables de recomendación y esfuerzo (`facilidad_resolucion`), cuenta cuántos clientes pertenecen a cada rol y los ordena de mayor a menor satisfacción.
+
+
+‼️‼️‼️‼️‼️‼️‼️‼️ Esta buena la idea, QUEDO COMO EL PICO ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️
 
 ```{r}
+# 1. Tabla Resumen: Satisfacción y esfuerzo por Rol
+resumen_rol <- encuesta_df %>%
+  filter(!is.na(rol_proyecto), !is.na(recomendacion)) %>%
+  group_by(rol_proyecto) %>%
+  summarise(
+    n_clientes = n(),
+    promedio_recomendacion = round(mean(recomendacion), 2),
+    promedio_facilidad = round(mean(facilidad_resolucion, na.rm = TRUE), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(promedio_recomendacion))
+
+print(resumen_rol)
+
+# 2. Gráfico de Barras Horizontales Ordenadas por Recomendación
+ggplot(resumen_rol, aes(x = reorder(rol_proyecto, promedio_recomendacion), y = promedio_recomendacion, fill = promedio_recomendacion)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = paste0("n=", n_clientes, " | Nota: ", promedio_recomendacion)), 
+            hjust = 1.1, color = "white", fontface = "bold", size = 3) +
+  coord_flip() + # Voltear el gráfico para leer fácilmente los roles
+  scale_fill_gradient(low = "#9ECAE1", high = "#084594") + # Degradado azul profesional
+  labs(
+    title = "Satisfacción Global por Rol del Proyecto",
+    subtitle = "Promedio de recomendación (1-7) y tamaño de muestra por perfil de cliente",
+    x = "Rol del Cliente",
+    y = "Promedio de Recomendación"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank()
+  )
+
+
+```
+
+
+```{r}
+# 1. Tabla Resumen por Sector de la Empresa (limpiando espacios invisibles con trimws)
+resumen_sector <- encuesta_df_sector_largo %>%
+  mutate(sector_empresa = trimws(sector_empresa)) %>%
+  filter(!is.na(sector_empresa), !is.na(recomendacion)) %>%
+  group_by(sector_empresa) %>%
+  summarise(
+    n_respuestas = n(),
+    promedio_recomendacion = round(mean(recomendacion), 2),
+    promedio_facilidad = round(mean(facilidad_resolucion, na.rm = TRUE), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(promedio_recomendacion))
+
+print(resumen_sector)
+
+# 2. Gráfico por Sector
+ggplot(resumen_sector, aes(x = reorder(sector_empresa, promedio_recomendacion), y = promedio_recomendacion, fill = promedio_recomendacion)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = paste0("n=", n_respuestas, " | ", promedio_recomendacion)), 
+            hjust = 1.1, color = "white", fontface = "bold", size = 3) +
+  coord_flip() +
+  scale_fill_gradient(low = "#A1D99B", high = "#238B45") + # Degradado verde (distinto al de roles para evitar confusión)
+  labs(
+    title = "Satisfacción Global por Sector Económico",
+    subtitle = "Promedio de recomendación desglosado por sector de aplicación de andamios",
+    x = "Sector Industrial",
+    y = "Promedio de Recomendación (1-7)"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank()
+  )
+
 ```
