@@ -197,7 +197,11 @@ write_csv(diccionario_nombres, "diccionario_variables.csv")
 ```
 
 #### Conversión variables tipo escala y Tratamiendo Datos Faltantes
+
 #####ESTO SE MODIFICO PARA OBTENER LAS 19 VARIABLES NUMERICAS
+
+
+💡 Entrega las variables de tipo escala. 
 ```{r}
 # Detectar TODAS las columnas de escala 1-7
 es_escala_1_a_7 <- function(x) {
@@ -214,19 +218,15 @@ es_escala_1_a_7 <- function(x) {
 columnas_escala <- names(encuesta_df)[sapply(encuesta_df, es_escala_1_a_7)]
 length(columnas_escala)
 ```
-#####ESTO SE CAMBIO PARA REVISAR EL TIPO DE CADA COLUMNA ANTES DE DECIDIR QUE HACER
+
+##### ESTO SE CAMBIO PARA REVISAR EL TIPO DE CADA COLUMNA ANTES DE DECIDIR QUE HACER
+
 ```{r}
-#tratar N/A como valor faltante y no como categoría
+# Tratar N/A como valor faltante real de R y asegurar conversión numérica segura
 encuesta_df <- encuesta_df %>%
   mutate(across(
     all_of(columnas_escala),
-    ~ {
-      if (is.character(.x)) {
-        as.numeric(na_if(.x, "N/A"))
-      } else {
-        as.numeric(.x)
-      }
-    }
+    ~ as.numeric(na_if(as.character(.x), "N/A"))
   ))
 ```
 
@@ -365,9 +365,11 @@ encuesta_df %>%
 print(diccionario_nombres, n = Inf, width = Inf)
 ```
 
-⚠️⚠️⚠️⚠️ Acá quede!
 ####Evaluacion conceptos múltiples
+
 Cuenta cuantas veces aparece cada concepto_final en el diccionario y se queda con los que aparecen más de una vez (los homologados). Sirve para saber cuales de las 96 columnas originales corresponden a preguntas repetidas que hay que fusionar.
+
+
 ```{r}
 #Control de calidad sobre la estandarización de variables.
 
@@ -380,8 +382,10 @@ length(conceptos_multiples)
 ```
 
 #### Bucle de validación
+
 Por cada concepto homologado, revisa si todas sus variantes (_v1,_v2) tienen el mismo tipo de dato (character-numeric). Si no tienen el mismo tipo da una advertencia.
 Sirve para verificar que todas las variantes de un mismo concepto tengan el mismo tipo de dato antes de fusionar.
+
 
 ```{r}
 #Bucle de validación cruzada de tipos de datos
@@ -419,8 +423,11 @@ for (concepto_actual in conceptos_multiples) {
 encuesta_df %>% summarise(missing_rol = mean(is.na(rol_proyecto)))
 ```
 
+
 ####SEPARAR SELECCION MULTIPLE
+
 Separa preguntas de selección múltiple (una fila por opción elegida) para poder contarlas.
+
 ```{r}
 encuesta_df_sector_largo <- encuesta_df %>%
   filter(!is.na(sector_empresa)) %>%
@@ -428,10 +435,12 @@ encuesta_df_sector_largo <- encuesta_df %>%
 
 encuesta_df_atributos_largo <- encuesta_df %>%
   filter(!is.na(atributos_importantes)) %>%
-  separate_rows(atributos_importantes, sep = ",")
+  separate_rows(atributos_importantes, sep = ",")  %>%
+  mutate(atributos_importantes = trimws(atributos_importantes))
 
 encuesta_df_atributos_largo %>% count(atributos_importantes, sort = TRUE)
 ```
+
 
 #### Variables numéricas homologadas
 
@@ -442,6 +451,7 @@ diccionario_nombres_escala <- diccionario_nombres %>%
          nombre_limpio %in% columnas_escala)
 
 length(unique(diccionario_nombres_escala$concepto_final))
+
 ```
 
 Roles disponibles
@@ -452,13 +462,16 @@ Roles disponibles
 encuesta_df %>%
   count(rol_proyecto)
 ```
+
 ####Revision variables numericas = 19?? QUÉ SE HIZO
 
 
 1. De los 26 conceptos homologados (`conceptos_multiples`), se identificaron 20 que corresponden a variables de escala 1-7. Los otros 6 son homologaciones de variables de texto o categóricas (rol_proyecto, sector_empresa,comentario_sugerencia, palabras_marca, conoce_webscaff, conoce_capscaff) y no aplican aquí.
+
 2. De esas 20 numéricas homologadas, se revisó en cuáles de las tres mediciones cada variante tiene datos reales (no solo missing por diseño del instrumento). Solo 16 están presentes en las tres olas; las otras 4 (claridad_estados_pago, claridad_en_la_informacion_de_planos_e_informes_entregados, coincidencia_entre_el_producto_solicitado_y_el_producto_recibido, disponibilidad_de_productos_y_accesorios) solo se preguntaron en 2 de las 3 mediciones.
 
 Sumando esas 16 a las 3 variables numéricas que ya eran literalmente comunes a las tres olas sin necesitar homologación (recomendacion, facilidad_resolucion, precio_calidad), se llega a las 19 variables numéricas comparables entre olas que indica la guía.
+
 
 ```{r}
 cobertura_por_variante <- diccionario_nombres_escala %>%
@@ -481,7 +494,10 @@ numericas_3_olas <- cobertura_por_concepto %>%
 length(numericas_3_olas)        # 16
 length(numericas_3_olas) + 3    # + recomendacion, facilidad_resolucion, precio_calidad = 19
 ```
+
+
 #### Ver cuales son las variables numericas
+
 ```{r}
 # Lista final de las 19 variables numéricas comparables entre las 3 mediciones
 variables_numericas_comparables <- c(
@@ -492,7 +508,9 @@ variables_numericas_comparables <- c(
 length(variables_numericas_comparables)  # 19
 print(variables_numericas_comparables)
 ```
+
 #####TABLA VARIABLES NUMERICAS
+
 ```{r}
 # % de missing REAL de cada variable numérica ya consolidada (post-coalesce),
 # no de las variantes sueltas antes de fusionar
@@ -507,14 +525,60 @@ print(tabla_variables_numericas, n = Inf)
 ```{r}
 # Diagnóstico: ¿qué concepto homologado NO fue detectado como escala?
 #Se usó para confirmar que satisfaccion_capscaff ya quedó incluida como escala.
+
 setdiff(conceptos_multiples, unique(diccionario_nombres_escala$concepto_final))
 ```
 
 ```{r}
+unique(encuesta_df$medicion)
 ```
 
+# EDA Visual:
+
+## Boxplot
+
 ```{r}
+# 1. Asegurar la limpieza y forzar que 'medicion' sea un factor con orden cronológico (Sólo para efecto de este gráfico)
+encuesta_df_plot <- encuesta_df %>%
+  filter(!is.na(recomendacion)) %>%
+  mutate(medicion = factor(medicion, 
+                           levels = c("Medición 1", "Medición 2", "Medición 3"),
+                           ordered = TRUE))
+
+# 2. Graficar los 3 boxplots en el mismo lienzo
+ggplot(encuesta_df_plot, aes(x = medicion, y = recomendacion, fill = medicion)) +
+  # Dibujar los gráficos de caja limpios con un ancho adecuado
+  geom_boxplot(width = 0.5, 
+               outlier.color = "#E41A1C", # Rojo sobrio para destacar atípicos reales
+               outlier.size = 1.5, 
+               alpha = 0.7, 
+               lwd = 0.6) +
+  
+  # Colores gama de azules
+  scale_fill_brewer(palette = "Blues") +
+  
+  # Forzar el eje Y a mostrar estrictamente la escala Likert 1-7
+  scale_y_continuous(breaks = 1:7, limits = c(1, 7)) +
+  
+  # Etiquetas
+  labs(
+    title = "Evolución de la Recomendación Global",
+    subtitle = "Comparación del nivel de satisfacción de clientes a lo largo de las 3 mediciones",
+    x = "Ola de Medición",
+    y = "Probabilidad de Recomendación (Escala 1 a 7)"
+  ) +
+  
+  # Tema visual limpio y sin distracciones
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title = element_text(face = "bold", size = 13, color = "gray10"),
+    plot.subtitle = element_text(size = 9.5, color = "gray40"),
+    legend.position = "none", # Ocultamos la leyenda porque el eje X ya identifica las olas
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank() # Quitamos las líneas verticales para que se vea más pulcro
+  )
 ```
+
 
 ```{r}
 ```
