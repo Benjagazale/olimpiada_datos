@@ -197,10 +197,14 @@ write_csv(diccionario_nombres, "diccionario_variables.csv")
 ```
 
 #### Conversión variables tipo escala y Tratamiendo Datos Faltantes
-
+#####ESTO SE MODIFICO PARA OBTENER LAS 19 VARIABLES NUMERICAS
 ```{r}
 # Detectar TODAS las columnas de escala 1-7
 es_escala_1_a_7 <- function(x) {
+  if (is.numeric(x)) {
+    valores <- unique(na.omit(x))
+    return(length(valores) > 0 && all(valores %in% 1:7))
+  }
   if (!is.character(x)) return(FALSE)
   valores <- unique(na.omit(x))
   length(valores) > 0 && all(valores %in% c("1","2","3","4","5","6","7","N/A"))
@@ -210,14 +214,19 @@ es_escala_1_a_7 <- function(x) {
 columnas_escala <- names(encuesta_df)[sapply(encuesta_df, es_escala_1_a_7)]
 length(columnas_escala)
 ```
-
+#####ESTO SE CAMBIO PARA REVISAR EL TIPO DE CADA COLUMNA ANTES DE DECIDIR QUE HACER
 ```{r}
 #tratar N/A como valor faltante y no como categoría
 encuesta_df <- encuesta_df %>%
   mutate(across(
     all_of(columnas_escala),
-    ~ na_if(.x, "N/A") %>% as.numeric()
-    
+    ~ {
+      if (is.character(.x)) {
+        as.numeric(na_if(.x, "N/A"))
+      } else {
+        as.numeric(.x)
+      }
+    }
   ))
 ```
 
@@ -357,9 +366,11 @@ print(diccionario_nombres, n = Inf, width = Inf)
 ```
 
 ⚠️⚠️⚠️⚠️ Acá quede!
-
+####Evaluacion conceptos múltiples
+Cuenta cuantas veces aparece cada concepto_final en el diccionario y se queda con los que aparecen más de una vez (los homologados). Sirve para saber cuales de las 96 columnas originales corresponden a preguntas repetidas que hay que fusionar.
 ```{r}
-#Control de calidad sobre la estandarización de variables. 
+#Control de calidad sobre la estandarización de variables.
+
 conceptos_multiples <- diccionario_nombres %>%
   count(concepto_final) %>%
   filter(n > 1) %>%
@@ -368,7 +379,9 @@ conceptos_multiples <- diccionario_nombres %>%
 length(conceptos_multiples)
 ```
 
-‼️ Error de mapeo? *Si el resultado de length(conceptos_multiples) es mayor a 0, te advierte inmediatamente que cometiste un error de mapeo y hay conceptos repetidos, lo que te obliga a revisar la tabla de equivalencias antes de unificar o modelar los datos.*
+#### Bucle de validación
+Por cada concepto homologado, revisa si todas sus variantes (_v1,_v2) tienen el mismo tipo de dato (character-numeric). Si no tienen el mismo tipo da una advertencia.
+Sirve para verificar que todas las variantes de un mismo concepto tengan el mismo tipo de dato antes de fusionar.
 
 ```{r}
 #Bucle de validación cruzada de tipos de datos
@@ -388,6 +401,9 @@ for (concepto_actual in conceptos_multiples) {
 }
 ```
 
+####Fusión y verificación
+Fusiona las variantes de cada concepto en una sola columna y verifica que la fusión no dejó vacíos.
+
 ⬆️
 
 ```{r}
@@ -403,6 +419,8 @@ for (concepto_actual in conceptos_multiples) {
 encuesta_df %>% summarise(missing_rol = mean(is.na(rol_proyecto)))
 ```
 
+####SEPARAR SELECCION MULTIPLE
+Separa preguntas de selección múltiple (una fila por opción elegida) para poder contarlas.
 ```{r}
 encuesta_df_sector_largo <- encuesta_df %>%
   filter(!is.na(sector_empresa)) %>%
@@ -418,6 +436,12 @@ encuesta_df_atributos_largo %>% count(atributos_importantes, sort = TRUE)
 #### Variables numéricas homologadas
 
 ```{r}
+#De los conceptos homologados, filtra solo los de tipo escala 1-7
+diccionario_nombres_escala <- diccionario_nombres %>%
+  filter(concepto_final %in% conceptos_multiples,
+         nombre_limpio %in% columnas_escala)
+
+length(unique(diccionario_nombres_escala$concepto_final))
 ```
 
 Roles disponibles
@@ -428,11 +452,62 @@ Roles disponibles
 encuesta_df %>%
   count(rol_proyecto)
 ```
+####Revision variables numericas = 19?? QUÉ SE HIZO
+
+
+1. De los 26 conceptos homologados (`conceptos_multiples`), se identificaron 20 que corresponden a variables de escala 1-7. Los otros 6 son homologaciones de variables de texto o categóricas (rol_proyecto, sector_empresa,comentario_sugerencia, palabras_marca, conoce_webscaff, conoce_capscaff) y no aplican aquí.
+2. De esas 20 numéricas homologadas, se revisó en cuáles de las tres mediciones cada variante tiene datos reales (no solo missing por diseño del instrumento). Solo 16 están presentes en las tres olas; las otras 4 (claridad_estados_pago, claridad_en_la_informacion_de_planos_e_informes_entregados, coincidencia_entre_el_producto_solicitado_y_el_producto_recibido, disponibilidad_de_productos_y_accesorios) solo se preguntaron en 2 de las 3 mediciones.
+
+Sumando esas 16 a las 3 variables numéricas que ya eran literalmente comunes a las tres olas sin necesitar homologación (recomendacion, facilidad_resolucion, precio_calidad), se llega a las 19 variables numéricas comparables entre olas que indica la guía.
 
 ```{r}
+cobertura_por_variante <- diccionario_nombres_escala %>%
+  distinct(nombre_limpio, concepto_final) %>%
+  mutate(
+    mediciones_activas = map(nombre_limpio, function(nombre_col) {
+      valores_no_na <- !is.na(encuesta_df[[nombre_col]])
+      unique(encuesta_df$medicion[valores_no_na])
+    })
+  )
+
+cobertura_por_concepto <- cobertura_por_variante %>%
+  group_by(concepto_final) %>%
+  summarise(n_mediciones_totales = length(unique(unlist(mediciones_activas))))
+
+numericas_3_olas <- cobertura_por_concepto %>%
+  filter(n_mediciones_totales == 3) %>%
+  pull(concepto_final)
+
+length(numericas_3_olas)        # 16
+length(numericas_3_olas) + 3    # + recomendacion, facilidad_resolucion, precio_calidad = 19
+```
+#### Ver cuales son las variables numericas
+```{r}
+# Lista final de las 19 variables numéricas comparables entre las 3 mediciones
+variables_numericas_comparables <- c(
+  "recomendacion", "facilidad_resolucion", "precio_calidad",  # ya comunes sin homologar
+  numericas_3_olas                                             # homologadas y presentes en las 3 olas
+)
+
+length(variables_numericas_comparables)  # 19
+print(variables_numericas_comparables)
+```
+#####TABLA VARIABLES NUMERICAS
+```{r}
+# % de missing REAL de cada variable numérica ya consolidada (post-coalesce),
+# no de las variantes sueltas antes de fusionar
+tabla_variables_numericas <- encuesta_df %>%
+  summarise(across(all_of(variables_numericas_comparables), ~ round(mean(is.na(.x)) * 100, 1))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "pct_missing_final") %>%
+  arrange(variable)
+
+print(tabla_variables_numericas, n = Inf)
 ```
 
 ```{r}
+# Diagnóstico: ¿qué concepto homologado NO fue detectado como escala?
+#Se usó para confirmar que satisfaccion_capscaff ya quedó incluida como escala.
+setdiff(conceptos_multiples, unique(diccionario_nombres_escala$concepto_final))
 ```
 
 ```{r}
