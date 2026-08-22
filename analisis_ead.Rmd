@@ -670,3 +670,164 @@ ggplot(resumen_sector, aes(x = reorder(sector_empresa, promedio_recomendacion), 
   )
 
 ```
+####Correlaciones variables numéricas
+#####Matriz principal (17 variables generales)
+```{r fig.width=10, fig.height=10}
+vars_generales <- setdiff(variables_numericas_comparables, c("satisfaccion_capscaff", "satisfaccion_webscaff"))
+
+matriz_cor <- encuesta_df %>%
+  select(all_of(vars_generales)) %>%
+  cor(use = "pairwise.complete.obs")
+
+par(mar = c(0, 0, 2, 0))  # márgenes mínimos, deja espacio arriba para el título
+
+corrplot(matriz_cor, 
+         method = "color", 
+         type = "upper",
+         order = "hclust",
+         tl.col = "black", 
+         tl.cex = 0.65,
+         tl.srt = 45,
+         addCoef.col = "black", 
+         number.cex = 0.55,
+         col = colorRampPalette(c("#B2182B", "white", "#2166AC"))(200),
+         title = "Correlación entre variables numéricas generales",
+         mar = c(0, 0, 2, 0))
+```
+##### Matriz WebScaff/CapScaff
+```{r}
+cor_webscaff_capscaff <- encuesta_df %>%
+  filter(!is.na(satisfaccion_webscaff) | !is.na(satisfaccion_capscaff)) %>%
+  select(recomendacion, precio_calidad, satisfaccion_webscaff, satisfaccion_capscaff) %>%
+  cor(use = "pairwise.complete.obs")
+
+print(cor_webscaff_capscaff)
+# Cuántos casos válidos hay detrás de cada correlación (importante mostrarlo, dado el missing alto)
+n_pares <- encuesta_df %>%
+  filter(!is.na(satisfaccion_webscaff) | !is.na(satisfaccion_capscaff)) %>%
+  select(recomendacion, precio_calidad, satisfaccion_webscaff, satisfaccion_capscaff) %>%
+  {crossprod(!is.na(.))}
+
+print(n_pares)
+
+```
+
+##### Distribución individual de las 19 variables numéricas
+
+```{r fig.width=12, fig.height=10}
+datos_largo <- encuesta_df %>%
+  select(all_of(variables_numericas_comparables)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "valor") %>%
+  filter(!is.na(valor))
+
+ggplot(datos_largo, aes(x = factor(valor))) +
+  geom_bar(fill = "#2166AC", alpha = 0.85) +
+  facet_wrap(~ variable, scales = "free_y", ncol = 4) +
+  labs(
+    title = "Distribución de respuestas por variable (escala 1-7)",
+    x = "Valor (1 = muy insatisfecho, 7 = muy satisfecho)",
+    y = "N° de respuestas"
+  ) +
+  theme_minimal(base_size = 9) +
+  theme(
+    strip.text = element_text(size = 7, face = "bold"),
+    axis.text.x = element_text(size = 7),
+    plot.title = element_text(face = "bold", size = 13)
+  )
+```
+
+##### Reducción de dimensionalidad (PCA)
+
+💡 La matriz de correlación mostró que las 17 variables numéricas generales están  muy correlacionadas entre sí (efecto halo). Antes de cualquier modelo, usamos PCA  para entender cuánta información es realmente independiente, y evitar que las  variables casi redundantes (visita técnica / claridad del informe; diseño /  ingeniería) pesen doble en análisis posteriores.
+
+```{r}
+datos_pca <- encuesta_df %>% 
+  select(all_of(vars_generales)) %>% 
+  filter(complete.cases(.))
+
+cat("Filas usadas (con las 17 variables completas):", nrow(datos_pca), "de", nrow(encuesta_df), "\n")
+
+pca_result <- prcomp(datos_pca, scale. = TRUE)
+summary(pca_result)
+```
+
+Varianza explicada por componente
+
+```{r fig.width=8, fig.height=5}
+library(factoextra)
+
+fviz_eig(pca_result, addlabels = TRUE, barfill = "#2166AC", barcolor = "#2166AC") +
+  labs(title = "Varianza explicada por cada componente principal")
+```
+
+Cómo contribuyen las variables originales a los primeros componentes
+
+```{r fig.width=11, fig.height=10}
+fviz_pca_var(pca_result, 
+             col.var = "contrib",
+             gradient.cols = c("#B2182B", "white", "#2166AC"),
+             repel = TRUE,
+             labelsize = 3,
+             arrowsize = 0.4) +
+  labs(title = "Contribución de variables a PC1 y PC2") +
+  theme_minimal(base_size = 10)
+```
+### K-means
+### Clustering (K-means sobre componentes principales)
+
+💡 Usamos los primeros 2 componentes del PCA (82% de la varianza) para poder visualizar los clusters en un plano.
+
+```{r}
+scores <- as.data.frame(pca_result$x[, 1:2])
+```
+
+### ¿Cuántos clusters tiene sentido usar?
+
+```{r fig.width=8, fig.height=5}
+fviz_nbclust(scores, kmeans, method = "silhouette", k.max = 6) +
+  labs(title = "Coeficiente de silueta según número de clusters")
+```
+### Modelo final (k=2)
+
+```{r}
+set.seed(123)
+km_final <- kmeans(scores, centers = 2, nstart = 25)
+
+datos_pca$cluster <- factor(km_final$cluster)
+
+table(datos_pca$cluster)
+```
+
+### Visualización de los clusters
+
+```{r fig.width=8, fig.height=6}
+fviz_cluster(km_final, data = scores,
+             palette = c("#E41A1C", "#377EB8"),
+             geom = "point",
+             ellipse.type = "convex",
+             ggtheme = theme_minimal(),
+             main = "Segmentos de clientes según satisfacción (PCA + K-means, k=2)")
+```
+
+### Perfil de cada cluster
+
+```{r}
+perfil_clusters <- datos_pca %>%
+  group_by(cluster) %>%
+  summarise(across(all_of(vars_generales), ~ round(mean(.x), 2)), n = n(), .groups = "drop")
+
+print(as.data.frame(perfil_clusters))
+```
+
+### Cruce con rol del proyecto
+
+```{r}
+idx_keep <- which(complete.cases(encuesta_df %>% select(all_of(vars_generales))))
+encuesta_df_clustered <- encuesta_df[idx_keep, ]
+encuesta_df_clustered$cluster <- factor(km_final$cluster)
+
+encuesta_df_clustered %>%
+  mutate(rol_proyecto = if_else(str_starts(rol_proyecto, "Otros \\(especifique\\)"), "Otros", rol_proyecto)) %>%
+  count(cluster, rol_proyecto) %>%
+  arrange(cluster, desc(n))
+```
