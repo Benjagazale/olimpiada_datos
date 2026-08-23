@@ -422,6 +422,30 @@ for (concepto_actual in conceptos_multiples) {
 # Verificación: rol_proyecto debería quedar con 0% de missing
 encuesta_df %>% summarise(missing_rol = mean(is.na(rol_proyecto)))
 ```
+#### Reclasificación de "Otros" en rol_proyecto
+
+```{r}
+encuesta_df <- encuesta_df %>%
+  mutate(rol_proyecto = case_when(
+    !str_starts(rol_proyecto, "Otros \\(especifique\\)") ~ rol_proyecto,
+    str_detect(rol_proyecto, regex("compra|adquisic|comex|subcontrato", ignore_case = TRUE)) ~ "Compras / Abastecimiento",
+    str_detect(rol_proyecto, regex("prevenci|hse", ignore_case = TRUE)) ~ "Prevención de Riesgos / HSE",
+    str_detect(rol_proyecto, regex("superintendente", ignore_case = TRUE)) ~ "Superintendencia",
+    str_detect(rol_proyecto, regex("capataz|maestro|^otros \\(especifique\\) - m1", ignore_case = TRUE)) ~ "Capataz / Maestro de Obra",
+    str_detect(rol_proyecto, regex("administrat|rrll|recursos humanos|finanzas", ignore_case = TRUE)) ~ "Administración / Finanzas",
+    str_detect(rol_proyecto, regex("ingenier|estudio|bim|constructibilidad|formulador", ignore_case = TRUE)) ~ "Ingeniería / Estudios",
+    str_detect(rol_proyecto, regex("operac|log.stica|supervisor|mantenci", ignore_case = TRUE)) ~ "Operaciones / Logística",
+    str_detect(rol_proyecto, regex("comercial", ignore_case = TRUE)) ~ "Comercial",
+    str_detect(rol_proyecto, regex("calidad", ignore_case = TRUE)) ~ "Calidad",
+    str_detect(rol_proyecto, regex("gerente general|director|socio|coordinador general", ignore_case = TRUE)) ~ "Dirección General",
+    TRUE ~ "Otros"
+  ))
+
+# Verificación: cuántos quedaron sin clasificar
+  encuesta_df %>% 
+  count(rol_proyecto) %>% 
+  arrange(rol_proyecto == "Otros", desc(n))
+```
 
 
 ####SEPARAR SELECCION MULTIPLE
@@ -590,8 +614,6 @@ ggplot(encuesta_df_plot, aes(x = medicion, y = recomendacion, fill = medicion)) 
 Calculamos el promedio de las variables de recomendación y esfuerzo (`facilidad_resolucion`), cuenta cuántos clientes pertenecen a cada rol y los ordena de mayor a menor satisfacción.
 
 
-‼️‼️‼️‼️‼️‼️‼️‼️ Esta buena la idea, QUEDO COMO EL PICO ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️
-
 ```{r}
 # 1. Tabla Resumen: Satisfacción y esfuerzo por Rol
 resumen_rol <- encuesta_df %>%
@@ -670,6 +692,67 @@ ggplot(resumen_sector, aes(x = reorder(sector_empresa, promedio_recomendacion), 
   )
 
 ```
+### Satisfacción por rubro tabla
+```{r}
+encuesta_df_sector_largo <- encuesta_df_sector_largo %>%
+  mutate(rubro_macro = case_when(
+    sector_empresa %in% c("Constructoras e inmobiliarias edificación",
+                           "Montador de andamios",
+                           "Contratista / instalador",
+                           "Infraestructura y concesionarias",
+                           "Restauración",
+                           "Otros (especifique) - Construccion") ~ "Construcción",
+    sector_empresa %in% c("Montaje industrial",
+                           "Contratista industrial y minería",
+                           "Planta energética",
+                           "Planta refinería",
+                           "Planta GNL",
+                           "Planta forestal",
+                           "Otros (especifique) - Plantas Celulosas Arauco") ~ "Industrial",
+    sector_empresa %in% c("Planta minera",
+                           "Otros (especifique) - Maeztraza reparadora de equipos mineros") ~ "Minero",
+    TRUE ~ "Otro"
+  ))
+
+# Verificación
+  encuesta_df_sector_largo %>%
+  count(rubro_macro, sector_empresa) %>%
+  arrange(rubro_macro, str_starts(sector_empresa, "Otros \\(especifique\\)"), desc(n))
+```
+#### Gráfico satisfacción por rubro
+```{r}
+resumen_rubro <- encuesta_df_sector_largo %>%
+  filter(!is.na(recomendacion)) %>%
+  group_by(rubro_macro) %>%
+  summarise(
+    n_clientes = n(),
+    promedio_recomendacion = round(mean(recomendacion, na.rm = TRUE), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(promedio_recomendacion))
+
+print(resumen_rubro)
+
+ggplot(resumen_rubro, aes(x = reorder(rubro_macro, promedio_recomendacion), 
+                          y = promedio_recomendacion, 
+                          fill = promedio_recomendacion)) +
+  geom_col() +
+  geom_text(aes(label = paste0("n=", n_clientes, " | Nota: ", promedio_recomendacion)),
+            hjust = 1.05, color = "white", size = 3.5, fontface = "bold") +
+  coord_flip() +
+  scale_fill_gradient(low = "#a6cee3", high = "#08306b") +
+  labs(
+    title = "Satisfacción Global por Rubro de la Empresa",
+    subtitle = "Promedio de recomendación agrupado en las 3 áreas de negocio de Layher + 'Otro'",
+    x = "Rubro",
+    y = "Promedio de Recomendación (1-7)"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold"))
+```
+
+
 ####Correlaciones variables numéricas
 #####Matriz principal (17 variables generales)
 ```{r fig.width=10, fig.height=10}
@@ -827,7 +910,6 @@ encuesta_df_clustered <- encuesta_df[idx_keep, ]
 encuesta_df_clustered$cluster <- factor(km_final$cluster)
 
 encuesta_df_clustered %>%
-  mutate(rol_proyecto = if_else(str_starts(rol_proyecto, "Otros \\(especifique\\)"), "Otros", rol_proyecto)) %>%
   count(cluster, rol_proyecto) %>%
-  arrange(cluster, desc(n))
+  arrange(cluster, rol_proyecto == "Otros", desc(n))
 ```
