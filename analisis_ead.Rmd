@@ -652,7 +652,7 @@ ggplot(resumen_rol, aes(x = reorder(rol_proyecto, promedio_recomendacion), y = p
 
 
 ```
-
+### Análisis descriptivo por sector económico
 
 ```{r}
 # 1. Tabla Resumen por Sector de la Empresa (limpiando espacios invisibles con trimws)
@@ -693,6 +693,7 @@ ggplot(resumen_sector, aes(x = reorder(sector_empresa, promedio_recomendacion), 
 
 ```
 ### Satisfacción por rubro tabla
+
 ```{r}
 encuesta_df_sector_largo <- encuesta_df_sector_largo %>%
   mutate(rubro_macro = case_when(
@@ -719,7 +720,9 @@ encuesta_df_sector_largo <- encuesta_df_sector_largo %>%
   count(rubro_macro, sector_empresa) %>%
   arrange(rubro_macro, str_starts(sector_empresa, "Otros \\(especifique\\)"), desc(n))
 ```
-#### Gráfico satisfacción por rubro
+
+### Gráfico satisfacción por rubro
+
 ```{r}
 resumen_rubro <- encuesta_df_sector_largo %>%
   filter(!is.na(recomendacion)) %>%
@@ -753,31 +756,57 @@ ggplot(resumen_rubro, aes(x = reorder(rubro_macro, promedio_recomendacion),
 ```
 
 
-####Correlaciones variables numéricas
-#####Matriz principal (17 variables generales)
+### Correlaciones variables numéricas
+
+####Matriz principal (17 variables generales)
+
+Creamos un diccionario de traducción (nombre largo -> Alias corto). Sólo para efectos de la matriz. 
+
+```{r}
+#Excluir las variables digitales 16-17 ("satisfaccion_capscaff" y "satisfaccion_webscaff")
+vars_generales <- setdiff(
+  variables_numericas_comparables, 
+  c("satisfaccion_capscaff", "satisfaccion_webscaff")
+)
+#Generar el diccionario de correspondencia (Tabla para tener a la vista)
+diccionario_alias <- tibble(
+  alias           = paste0("V", seq_along(vars_generales)),
+  nombre_variable = vars_generales
+)
+# Imprimir la tabla de equivalencias
+print(diccionario_alias, n = Inf)
+```
+
 ```{r fig.width=10, fig.height=10}
-vars_generales <- setdiff(variables_numericas_comparables, c("satisfaccion_capscaff", "satisfaccion_webscaff"))
+# Crear subconjunto temporal y renombrar únicamente las columnas de este objeto
+df_corr_temp <- encuesta_df %>%
+  select(all_of(vars_generales))
 
-matriz_cor <- encuesta_df %>%
-  select(all_of(vars_generales)) %>%
-  cor(use = "pairwise.complete.obs")
+colnames(df_corr_temp) <- diccionario_alias$alias
 
-par(mar = c(0, 0, 2, 0))  # márgenes mínimos, deja espacio arriba para el título
+# Calcular la matriz de correlación omitiendo NAs por pares
+matriz_cor <- cor(df_corr_temp, use = "pairwise.complete.obs")
 
-corrplot(matriz_cor, 
-         method = "color", 
-         type = "upper",
-         order = "hclust",
-         tl.col = "black", 
-         tl.cex = 0.65,
-         tl.srt = 45,
-         addCoef.col = "black", 
-         number.cex = 0.55,
-         col = colorRampPalette(c("#B2182B", "white", "#2166AC"))(200),
-         title = "Correlación entre variables numéricas generales",
-         mar = c(0, 0, 2, 0))
+# Configuración del gráfico con tus parámetros visuales
+par(mar = c(0, 0, 2, 0))
+
+corrplot(
+  matriz_cor, 
+  method      = "color", 
+  type        = "upper",
+  order       = "hclust",
+  tl.col      = "black", 
+  tl.cex      = 0.8,
+  tl.srt      = 45,
+  addCoef.col = "black", 
+  number.cex  = 0.65,
+  col         = colorRampPalette(c("#B2182B", "white", "#2166AC"))(200),
+  title       = "Correlación entre variables numéricas generales",
+  mar         = c(0, 0, 2, 0)
+)
 ```
 ##### Matriz WebScaff/CapScaff
+
 ```{r}
 cor_webscaff_capscaff <- encuesta_df %>%
   filter(!is.na(satisfaccion_webscaff) | !is.na(satisfaccion_capscaff)) %>%
