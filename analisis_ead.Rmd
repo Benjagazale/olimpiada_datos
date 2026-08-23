@@ -913,3 +913,51 @@ encuesta_df_clustered %>%
   count(cluster, rol_proyecto) %>%
   arrange(cluster, rol_proyecto == "Otros", desc(n))
 ```
+
+## Análisis complementario de comentarios abiertos (texto libre)
+
+💡 Como complemento al análisis cuantitativo, se revisaron los comentarios abiertos  (`comentario_sugerencia`, `razon_recomendacion`) para identificar patrones temáticos no capturados por las variables de escala. La lectura inicial y propuesta de categorías se apoyó en IA generativa (Claude); la cuantificación se implementó y verificó en R.
+
+
+
+```{r}
+texto_combinado <- encuesta_df %>%
+  select(comentario_sugerencia, razon_recomendacion) %>%
+  pivot_longer(everything(), values_to = "texto") %>%
+  filter(!is.na(texto)) %>%
+  mutate(texto = tolower(texto))
+
+cat("Total de respuestas de texto libre analizadas:", nrow(texto_combinado), "\n")
+
+# Frecuencia de temas recurrentes, detectados por palabras clave
+temas <- tibble::tribble(
+  ~tema, ~patron,
+  "Stock / repuestos / accesorios disponibles", "stock|repuesto|accesorio",
+  "Tiempos de espera / demora (general)", "demor|lent|espera|tard",
+  "Devolución (proceso)", "devoluci[oó]n|devolver",
+  "Daños / material dañado en devolución", "da[ñn]|deterior",
+  "Certificación / calidad del sistema", "certificad"
+)
+
+resumen_temas <- temas %>%
+  rowwise() %>%
+  mutate(n_menciones = sum(str_detect(texto_combinado$texto, regex(patron)), na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(desc(n_menciones))
+
+print(resumen_temas)
+```
+
+### Visualización
+
+```{r fig.width=8, fig.height=5}
+ggplot(resumen_temas, aes(x = reorder(tema, n_menciones), y = n_menciones)) +
+  geom_col(fill = "#2166AC") +
+  geom_text(aes(label = n_menciones), hjust = -0.2) +
+  coord_flip() +
+  labs(title = "Temas recurrentes en comentarios abiertos",
+       subtitle = paste0("Sobre ", nrow(texto_combinado), " respuestas de texto libre analizadas"),
+       x = NULL, y = "N° de menciones") +
+  theme_minimal(base_size = 11) +
+  expand_limits(y = max(resumen_temas$n_menciones) * 1.15)
+```
