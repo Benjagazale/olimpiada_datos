@@ -277,6 +277,11 @@ diagnose(encuesta_df) %>%
 Detección de duplicados
 
 ```{r}
+#Identificadores duplicados del dataset
+length(unique(encuesta_df$id_respuesta[duplicated(encuesta_df$id_respuesta)]))
+```
+
+```{r}
 # Evaluar si las filas con el mismo id_respuesta son la misma persona respondiendo dos veces o son personas distinas a las que se les asigno el mismo id por error
 ids_duplicados <- encuesta_df %>%
   count(id_respuesta, medicion) %>%
@@ -545,6 +550,8 @@ length(variables_numericas_comparables)  # 19
 print(variables_numericas_comparables)
 ```
 
+
+
 ### Tabla resumen de variables cuantitativas para el modelado
 
 ```{r}
@@ -570,6 +577,7 @@ unique(encuesta_df$medicion)
 ```
 
 # 3. Estadística Descriptiva y Análisis Exploratorio Visual
+
 
 ## 3.1 Diagnóstico de dispersión y simetría (EDA Visual)
 
@@ -615,6 +623,17 @@ ggplot(encuesta_df_plot, aes(x = medicion, y = recomendacion, fill = medicion)) 
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank() # Quitamos las líneas verticales para que se vea más pulcro
   )
+```
+### Prueba de hipótesis
+
+```{r}
+# Ejecución del test de Kruskal-Wallis
+# H0 (Hipótesis Nula): Las medianas de satisfacción son idénticas entre las olas.
+# H1 (Hipótesis Alternativa): Al menos una de las olas presenta medianas significativamente distintas.
+
+prueba_longitudinal <- kruskal.test(recomendacion ~ medicion, data = encuesta_df)
+
+print(prueba_longitudinal)
 ```
 
 💡
