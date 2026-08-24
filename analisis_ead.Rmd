@@ -784,7 +784,7 @@ df_corr_temp <- encuesta_df %>%
 
 colnames(df_corr_temp) <- diccionario_alias$alias
 
-# Calcular la matriz de correlación omitiendo NAs por pares
+# Calcular la matriz de correlación (Pearson) omitiendo NAs por pares
 matriz_cor <- cor(df_corr_temp, use = "pairwise.complete.obs")
 
 # Configuración del gráfico con tus parámetros visuales
@@ -872,16 +872,47 @@ fviz_eig(pca_result, addlabels = TRUE, barfill = "#2166AC", barcolor = "#2166AC"
   labs(title = "Varianza explicada por cada componente principal")
 ```
 
-Cómo contribuyen las variables originales a los primeros componentes
+##### Cómo contribuyen las variables originales a los primeros componentes
 
 ```{r fig.width=11, fig.height=10}
-fviz_pca_var(pca_result, 
-             col.var = "contrib",
-             gradient.cols = c("#B2182B", "white", "#2166AC"),
-             repel = TRUE,
-             labelsize = 3,
-             arrowsize = 0.4) +
-  labs(title = "Contribución de variables a PC1 y PC2") +
+#DICCIONARIO DE ALIAS Y TABLA DE CORRESPONDENCIAS (Para la leyenda)
+
+# Extraer los nombres de las variables evaluadas en el PCA
+nombres_pca <- rownames(pca_result$rotation)
+
+# Crear el diccionario con identificadores cortos (V1, V2, ...)
+diccionario_pca <- tibble(
+  alias           = paste0("V", seq_along(nombres_pca)),
+  variable_origen = nombres_pca
+)
+
+# Imprimir la tabla de equivalencias para tenerla como referencia en el informe
+print(diccionario_pca, n = Inf)
+
+#COPIA TEMPORAL DEL OBJETO PCA Y ASIGNACIÓN DE ALIAS
+# Clonamos el resultado del PCA en un objeto temporal aislado
+pca_temp <- pca_result
+
+# Reasignamos los nombres únicamente en los componentes internos de la copia
+rownames(pca_temp$rotation) <- diccionario_pca$alias
+names(pca_temp$center)      <- diccionario_pca$alias
+names(pca_temp$scale)       <- diccionario_pca$alias
+
+#GRÁFICO DE CONTRIBUCIÓN DE VARIABLES CON NOMBRES CORTOS
+fviz_pca_var(
+  pca_temp, 
+  col.var       = "contrib",
+  gradient.cols = c("#B2182B", "white", "#2166AC"),
+  repel         = TRUE,
+  labelsize     = 3.5,
+  arrowsize     = 0.5
+) +
+  labs(
+    title    = "Contribución de variables a PC1 y PC2",
+    subtitle = "Variables representadas mediante alias cortos (ver tabla de correspondencia)",
+    x        = paste0("PC1 (", round(summary(pca_result)$importance[2, 1] * 100, 1), "% varianza)"),
+    y        = paste0("PC2 (", round(summary(pca_result)$importance[2, 2] * 100, 1), "% varianza)")
+  ) +
   theme_minimal(base_size = 10)
 ```
 ### K-means
