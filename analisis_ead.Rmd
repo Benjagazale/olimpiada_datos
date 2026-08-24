@@ -1,3 +1,9 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+
 # 1. Análisis Exploratorio de Datos Inicial (EDA)
 
 🏢 Olimpiada de Minería de Datos UNAB Caso de estudio: Identificación de patrones en la satisfacción de clientes B2B mediante minería de datos
@@ -204,8 +210,7 @@ write_csv(diccionario_nombres, "diccionario_variables.csv")
 
 *ESTO SE MODIFICO PARA OBTENER LAS 19 VARIABLES NUMERICAS*
 
-
-💡 Entrega las variables de tipo escala. 
+💡 Entrega las variables de tipo escala.
 
 ```{r}
 # Detectar TODAS las columnas de escala 1-7
@@ -335,6 +340,7 @@ n_distinct(encuesta_df$id_fila) == nrow(encuesta_df)
 👀⬆️ Con `True` confirmamos que cada fila de dataset es única respecto a su posisición. Por ello, se genera una clave artificial única para manterner la trazabilidad de cada fila.
 
 ## 2.4 Evaluación y tratamiento de respuestas parciales
+
 Estado de respuestas: COMPLETED — PARTIAL
 
 ```{r}
@@ -374,10 +380,10 @@ print(diccionario_nombres, n = Inf, width = Inf)
 ```
 
 ## 2.5 Detección de colisiones de conceptos en la estandarización
+
 Evaluacion conceptos múltiples
 
 Cuenta cuantas veces aparece cada concepto_final en el diccionario y se queda con los que aparecen más de una vez (los homologados). Sirve para saber cuales de las 96 columnas originales corresponden a preguntas repetidas que hay que fusionar.
-
 
 ```{r}
 #Control de calidad sobre la estandarización de variables.
@@ -391,11 +397,10 @@ length(conceptos_multiples)
 ```
 
 ### Validación automatizada de consistencia entre variantes
+
 Bucle de validación
 
-Por cada concepto homologado, revisa si todas sus variantes (_v1,_v2) tienen el mismo tipo de dato (character-numeric). Si no tienen el mismo tipo da una advertencia.
-Sirve para verificar que todas las variantes de un mismo concepto tengan el mismo tipo de dato antes de fusionar.
-
+Por cada concepto homologado, revisa si todas sus variantes (\_v1,\_v2) tienen el mismo tipo de dato (character-numeric). Si no tienen el mismo tipo da una advertencia. Sirve para verificar que todas las variantes de un mismo concepto tengan el mismo tipo de dato antes de fusionar.
 
 ```{r}
 #Bucle de validación cruzada de tipos de datos
@@ -433,8 +438,8 @@ for (concepto_actual in conceptos_multiples) {
 # Verificación: rol_proyecto debería quedar con 0% de missing
 encuesta_df %>% summarise(missing_rol = mean(is.na(rol_proyecto)))
 ```
-## 2.7 Recodificación y tratamiento de la categoría "Otros" en el rol del proyecto
 
+## 2.7 Recodificación y tratamiento de la categoría "Otros" en el rol del proyecto
 
 ```{r}
 encuesta_df <- encuesta_df %>%
@@ -459,7 +464,6 @@ encuesta_df <- encuesta_df %>%
   arrange(rol_proyecto == "Otros", desc(n))
 ```
 
-
 ## 2.8 Tratamiento de ítems de selección múltiple
 
 Separa preguntas de selección múltiple (una fila por opción elegida) para poder contarlas.
@@ -477,7 +481,6 @@ encuesta_df_atributos_largo <- encuesta_df %>%
 encuesta_df_atributos_largo %>% count(atributos_importantes, sort = TRUE)
 ```
 
-
 ## 2.9 Consolidación del subconjunto numérico homologado
 
 ```{r}
@@ -492,7 +495,6 @@ length(unique(diccionario_nombres_escala$concepto_final))
 
 Roles disponibles
 
-
 ```{r}
 encuesta_df %>%
   count(rol_proyecto)
@@ -502,12 +504,11 @@ encuesta_df %>%
 
 ¿Qué se hizo para obtener las 19 variables?
 
-1. De los 26 conceptos homologados (`conceptos_multiples`), se identificaron 20 que corresponden a variables de escala 1-7. Los otros 6 son homologaciones de variables de texto o categóricas (rol_proyecto, sector_empresa,comentario_sugerencia, palabras_marca, conoce_webscaff, conoce_capscaff) y no aplican aquí.
+1.  De los 26 conceptos homologados (`conceptos_multiples`), se identificaron 20 que corresponden a variables de escala 1-7. Los otros 6 son homologaciones de variables de texto o categóricas (rol_proyecto, sector_empresa,comentario_sugerencia, palabras_marca, conoce_webscaff, conoce_capscaff) y no aplican aquí.
 
-2. De esas 20 numéricas homologadas, se revisó en cuáles de las tres mediciones cada variante tiene datos reales (no solo missing por diseño del instrumento). Solo 16 están presentes en las tres olas; las otras 4 (claridad_estados_pago, claridad_en_la_informacion_de_planos_e_informes_entregados, coincidencia_entre_el_producto_solicitado_y_el_producto_recibido, disponibilidad_de_productos_y_accesorios) solo se preguntaron en 2 de las 3 mediciones.
+2.  De esas 20 numéricas homologadas, se revisó en cuáles de las tres mediciones cada variante tiene datos reales (no solo missing por diseño del instrumento). Solo 16 están presentes en las tres olas; las otras 4 (claridad_estados_pago, claridad_en_la_informacion_de_planos_e_informes_entregados, coincidencia_entre_el_producto_solicitado_y_el_producto_recibido, disponibilidad_de_productos_y_accesorios) solo se preguntaron en 2 de las 3 mediciones.
 
 Sumando esas 16 a las 3 variables numéricas que ya eran literalmente comunes a las tres olas sin necesitar homologación (recomendacion, facilidad_resolucion, precio_calidad), se llega a las 19 variables numéricas comparables entre olas que indica la guía.
-
 
 ```{r}
 cobertura_por_variante <- diccionario_nombres_escala %>%
@@ -530,7 +531,6 @@ numericas_3_olas <- cobertura_por_concepto %>%
 length(numericas_3_olas)        # 16
 length(numericas_3_olas) + 3    # + recomendacion, facilidad_resolucion, precio_calidad = 19
 ```
-
 
 ### Variables numericas
 
@@ -568,7 +568,9 @@ setdiff(conceptos_multiples, unique(diccionario_nombres_escala$concepto_final))
 ```{r}
 unique(encuesta_df$medicion)
 ```
+
 # 3. Estadística Descriptiva y Análisis Exploratorio Visual
+
 ## 3.1 Diagnóstico de dispersión y simetría (EDA Visual)
 
 ### Diagramas de caja y detección de valores atípicos
@@ -625,7 +627,6 @@ ggplot(encuesta_df_plot, aes(x = medicion, y = recomendacion, fill = medicion)) 
 
 Calculamos el promedio de las variables de recomendación y esfuerzo (`facilidad_resolucion`), cuenta cuántos clientes pertenecen a cada rol y los ordena de mayor a menor satisfacción.
 
-
 ```{r}
 # 1. Tabla Resumen: Satisfacción y esfuerzo por Rol
 resumen_rol <- encuesta_df %>%
@@ -664,6 +665,7 @@ ggplot(resumen_rol, aes(x = reorder(rol_proyecto, promedio_recomendacion), y = p
 
 
 ```
+
 ### Análisis de satisfacción según sector productivo de la empresa
 
 ```{r}
@@ -704,6 +706,7 @@ ggplot(resumen_sector, aes(x = reorder(sector_empresa, promedio_recomendacion), 
   )
 
 ```
+
 #### Tabla de contingencia y estadísticos por rubro económico
 
 ```{r}
@@ -773,7 +776,7 @@ ggplot(resumen_rubro, aes(x = reorder(rubro_macro, promedio_recomendacion),
 
 ### Matriz de correlación para el núcleo de evaluación general (17 ítems)
 
-Creamos un diccionario de traducción (nombre largo -> Alias corto). Sólo para efectos de la matriz. 
+Creamos un diccionario de traducción (nombre largo -\> Alias corto). Sólo para efectos de la matriz.
 
 ```{r}
 #Excluir las variables digitales 16-17 ("satisfaccion_capscaff" y "satisfaccion_webscaff")
@@ -818,6 +821,7 @@ corrplot(
   mar         = c(0, 0, 2, 0)
 )
 ```
+
 ### Correlación en módulos específicos de servicios digitales
 
 ```{r}
@@ -860,11 +864,12 @@ ggplot(datos_largo, aes(x = factor(valor))) +
     plot.title = element_text(face = "bold", size = 13)
   )
 ```
+
 # 5. Reducción de Dimensionalidad y Segmentación de Clientes
 
 ## 5.1 Análisis de Componentes Principales (PCA)
 
-💡 La matriz de correlación mostró que las 17 variables numéricas generales están  muy correlacionadas entre sí (efecto halo). Antes de cualquier modelo, usamos PCA  para entender cuánta información es realmente independiente, y evitar que las  variables casi redundantes (visita técnica / claridad del informe; diseño /  ingeniería) pesen doble en análisis posteriores.
+💡 La matriz de correlación mostró que las 17 variables numéricas generales están muy correlacionadas entre sí (efecto halo). Antes de cualquier modelo, usamos PCA para entender cuánta información es realmente independiente, y evitar que las variables casi redundantes (visita técnica / claridad del informe; diseño / ingeniería) pesen doble en análisis posteriores.
 
 ```{r}
 datos_pca <- encuesta_df %>% 
@@ -929,7 +934,9 @@ fviz_pca_var(
   ) +
   theme_minimal(base_size = 10)
 ```
+
 ## 5.2 Segmentación no supervisada mediante algoritmo K-Means
+
 ### Ajuste del modelo K-Means proyectado sobre el espacio latente del PCA
 
 💡 Usamos los primeros 2 componentes del PCA (82% de la varianza) para poder visualizar los clusters en un plano.
@@ -939,13 +946,16 @@ scores <- as.data.frame(pca_result$x[, 1:2])
 ```
 
 ### Determinación del número óptimo de grupos
+
 ¿Cuántos clusters tiene sentido usar?
 
 ```{r fig.width=8, fig.height=5}
 fviz_nbclust(scores, kmeans, method = "silhouette", k.max = 6) +
   labs(title = "Coeficiente de silueta según número de clusters")
 ```
+
 ### Ajuste y convergencia del modelo
+
 Modelo final (k=2)
 
 ```{r}
@@ -979,6 +989,7 @@ print(as.data.frame(perfil_clusters))
 ```
 
 ### Asociación cruzada entre segmentos identificados y roles de cliente
+
 Cruce con rol del proyecto
 
 ```{r}
@@ -995,9 +1006,7 @@ encuesta_df_clustered %>%
 
 ## 6.1 Procesamiento del lenguaje natural y extracción de temas cualitativos
 
-💡 Como complemento al análisis cuantitativo, se revisaron los comentarios abiertos  (`comentario_sugerencia`, `razon_recomendacion`) para identificar patrones temáticos no capturados por las variables de escala. La lectura inicial y propuesta de categorías se apoyó en IA generativa (Claude); la cuantificación se implementó y verificó en R.
-
-
+💡 Como complemento al análisis cuantitativo, se revisaron los comentarios abiertos (`comentario_sugerencia`, `razon_recomendacion`) para identificar patrones temáticos no capturados por las variables de escala. La lectura inicial y propuesta de categorías se apoyó en IA generativa (Claude); la cuantificación se implementó y verificó en R.
 
 ```{r}
 texto_combinado <- encuesta_df %>%
